@@ -1,6 +1,8 @@
 #include "MotorDriver.h"
 #include "Config.h"
 
+
+
 void MotorDriver::begin(int leftA, int leftB, int rightA, int rightB){
     _lA = leftA; _lB = leftB;
     _rA = rightA; _rB = rightB;
@@ -14,7 +16,7 @@ void MotorDriver::begin(int leftA, int leftB, int rightA, int rightB){
 
 void MotorDriver::drive(int leftSpeed, int rightSpeed){
     leftSpeed = constrain(leftSpeed, -DC_MOTOR_MAX_SPEED, DC_MOTOR_MAX_SPEED);
-    rightSpeed = constrain(rightSpeed, -DC_MOTOR_MAX_SPEED, DC_MOTOR_MAX_SPEED);
+    rightSpeed = constrain(-rightSpeed, -DC_MOTOR_MAX_SPEED, DC_MOTOR_MAX_SPEED);
 
     if (leftSpeed >= 0) { analogWrite(_lA, leftSpeed); digitalWrite(_lB, LOW); }
     else                   { analogWrite(_lB, -leftSpeed); digitalWrite(_lA, LOW); }
