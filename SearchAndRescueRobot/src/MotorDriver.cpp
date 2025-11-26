@@ -3,7 +3,7 @@
 
 
 
-void MotorDriver::begin(int leftA, int leftB, int rightA, int rightB){
+void MotorDriver::begin(uint8_t leftA, uint8_t leftB, uint8_t rightA, uint8_t rightB){
     _lA = leftA; _lB = leftB;
     _rA = rightA; _rB = rightB;
     pinMode(_lA, OUTPUT);
@@ -16,7 +16,7 @@ void MotorDriver::begin(int leftA, int leftB, int rightA, int rightB){
 
 void MotorDriver::drive(int leftSpeed, int rightSpeed){
     leftSpeed = constrain(leftSpeed, -DC_MOTOR_MAX_SPEED, DC_MOTOR_MAX_SPEED);
-    rightSpeed = constrain(-rightSpeed, -DC_MOTOR_MAX_SPEED, DC_MOTOR_MAX_SPEED);
+    rightSpeed = constrain(rightSpeed, -DC_MOTOR_MAX_SPEED, DC_MOTOR_MAX_SPEED);
 
     if (leftSpeed >= 0) { analogWrite(_lA, leftSpeed); digitalWrite(_lB, LOW); }
     else                   { analogWrite(_lB, -leftSpeed); digitalWrite(_lA, LOW); }
@@ -27,8 +27,5 @@ void MotorDriver::drive(int leftSpeed, int rightSpeed){
 }
 
 void MotorDriver::stop(){
-    digitalWrite(_lA, LOW);
-    digitalWrite(_lB, LOW);
-    digitalWrite(_rA, LOW);
-    digitalWrite(_rB, LOW);
+    drive(0,0);
 }

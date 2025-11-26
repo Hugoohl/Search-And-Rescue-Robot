@@ -15,3 +15,11 @@
 #define IR_ARRAY_PIN2 A1
 #define IR_ARRAY_PIN3 A2
 #define IR_ARRAY_PIN4 A3
+
+//Single IR pin
+#define IR_PIN A4
+
+// Start button
+#define START_BUTTON_PIN
+
+
