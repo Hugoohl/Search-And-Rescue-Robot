@@ -9,6 +9,10 @@
 //Servo Pins
 
 //Ultra sonic Pins
+#define US_PIN_TRIG 11
+#define US_PIN_ECHO_RIGHT 12
+#define US_PIN_ECHO_LEFT 7
+#define US_PIN_ECHO_FRONT 8
 
 //IR sensor Pins (right to left)
 #define IR_ARRAY_PIN1 A0
@@ -20,6 +24,6 @@
 #define IR_PIN A4
 
 // Start button
-#define START_BUTTON_PIN
+#define START_BUTTON_PIN 4
 
 

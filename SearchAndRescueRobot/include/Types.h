@@ -16,11 +16,16 @@ enum class JunctionType {
     DEAD_END,
 };
 
-enum class MissionState{
-    SEARCH_RIGHT,
+enum class MissionState {
+    WAIT_FOR_BUTTON,
+    SEARCH_RIGHT_1,
+    RETURN_LEFT_1,
+    SEARCH_RIGHT_2,
+    RETURN_LEFT_2,
+    SEARCH_LEFT_FINAL,
+    RETURN_LEFT_FINAL,
+    ISLAND_SEARCH,
     PICKUP,
-    SEARCH_LEFT,
-    RETURN,
     RELEASE,
-
+    DONE
 };

@@ -5,30 +5,79 @@
 #include "Config.h"
 #include "MotorDriver.h"
 #include "LineControl.h"
+#include "UltraSonic.h"
 
-
-
-
-class Navigator {
+class Navigator 
+{
 public:
-    Navigator(LineControl &line, MotorDriver &motor);
+    Navigator(LineControl &line, MotorDriver &motor, UltraSonic &sonar);
+
     void begin();
     void update();
 
 private:
+    // ------------------------
+    // Robot global state
+    // ------------------------
     RobotState _state = RobotState::WAIT_FOR_START;
-    MissionState _phase = MissionState::SEARCH_LEFT;
 
+    // ------------------------
+    // Mission phase
+    // ------------------------
+    MissionState _phase = MissionState::WAIT_FOR_BUTTON;
+
+    // Stores which search phase triggered pickup (needed to select return phase)
+    MissionState _phaseBeforePickup = MissionState::WAIT_FOR_BUTTON;
+
+    // Which return phase was completed (1,2,3)
+    int _lastReturnPhase = 0;
+
+    // Dependencies
     LineControl   &_line;
     MotorDriver   &_motor;
+    UltraSonic    &_sonar;
 
-
+    // Time tracking if needed
     unsigned long _missionStartTime = 0;
 
+    // ------------------------
+    // Core State Handlers
+    // ------------------------
     void handleWaitForStart();
     void handleCalibrating();
     void handleRunMission();
     void handleMissionDone();
 
-    bool missionTimeExceeded() const;
+    // ------------------------
+    // Mission Phase Handlers
+    // ------------------------
+    void handleSearchRight1();
+    void handleReturnLeft1();
+
+    void handleSearchRight2();
+    void handleReturnLeft2();
+
+    void handleSearchLeftFinal();
+    void handleIslandSearch();
+    void handleReturnLeftFinal();
+
+    void handlePickup();
+    void handleRelease();
+
+    // ------------------------
+    // Utility helpers
+    // ------------------------
+    bool startButtonPressed();
+    bool detectCylinder();      // TODO: implement your own logic
+    bool atStartSquare();       // TODO: implement your own logic
+    bool inIslandRegion();      // TODO: implement your island location check
+    bool lineLost();
+
+    void rotate180();
+    void rotate90left();
+    void rotate90right();
+
+    void followRightWall();
+    void followLeftWall();
 };
+
