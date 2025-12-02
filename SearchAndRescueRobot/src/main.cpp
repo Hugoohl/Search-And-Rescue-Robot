@@ -4,19 +4,18 @@
 #include "MotorDriver.h"
 #include "LineControl.h"
 #include "Types.h"
+#include "Navigator.h"
+#include <QTRSensors.h>
 
 MotorDriver motor;
 LineControl line;
-
-int leftSpeed = 0;
-int rightSpeed = 0;
-
+Navigator nav(line,motor);
 
 
 void setup()
 {
 
-  Serial.begin(9600);
+  
 
   motor.begin(MOTOR_PIN_M1A, MOTOR_PIN_M1B, MOTOR_PIN_M2A, MOTOR_PIN_M2B);
 
@@ -24,12 +23,19 @@ void setup()
   
   line.begin(arrayPins, IR_PIN);
 
-  line.calibrate();
+  nav.begin();
+  
+  Serial.begin(9600);
+
 }
 
 void loop()
 {
- JunctionType type = line.detectJunction();
+  
+ 
+nav.update();
+
+  
 
 
 }

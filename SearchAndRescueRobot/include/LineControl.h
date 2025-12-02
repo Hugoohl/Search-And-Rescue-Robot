@@ -15,6 +15,7 @@ public:
     void computeSpeeds(int &leftSpeed, int &rightSpeed);
     bool isLineLost();
     void readSingle();
+    uint8_t getSingle();
     uint16_t getArraySensorValues(int i);
     String junctionTypeToString(JunctionType type);
     JunctionType detectJunction();

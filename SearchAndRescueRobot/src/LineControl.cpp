@@ -33,18 +33,18 @@ void LineControl::computeSpeeds(int &leftSpeed, int &rightSpeed)
 
   if (pos > 1000 && pos < 2500)
   {
-    leftSpeed = 50;
-    rightSpeed = 50;
+    leftSpeed =DC_MOTOR_BASE_SPEED;
+    rightSpeed =DC_MOTOR_BASE_SPEED;
   }
   else if (pos < 1000)
   {
-    leftSpeed = 50;
-    rightSpeed = 15;
+    leftSpeed = DC_MOTOR_TURN_SPEED;
+    rightSpeed =DC_MOTOR_BASE_SPEED;
   }
   else if (pos > 2000)
   {
-    leftSpeed = 15;
-    rightSpeed = 50;
+    leftSpeed =DC_MOTOR_BASE_SPEED;
+    rightSpeed = DC_MOTOR_TURN_SPEED;
   }
 }
 
@@ -70,6 +70,11 @@ bool LineControl::isLineLost()
   return true;
 }
 
+uint8_t LineControl::getSingle(){
+  readSingle();
+  return _singleSensor;
+}
+
 void LineControl::readSingle()
 {
   _singleSensor = analogRead(_singlePin);
@@ -91,19 +96,19 @@ JunctionType LineControl::detectJunction()
   {
     return JunctionType::CROSS;
   }
-  if (!s[0] && s[1] && s[2] && s[3] && !single)
+  if (!s[0] && s[1] && s[2] && s[3] && single)
   {
-    return JunctionType::LEFT;
+    return JunctionType::LEFT_T;
   }
-  if (s[0] && s[1] && s[2] && !s[3] && !single)
+  if (s[0] && s[1] && s[2] && !s[3] && single)
   {
-    return JunctionType::RIGHT;
+    return JunctionType::RIGHT_T;
   }
   if (s[0] && s[1] && s[2] && s[3] && !single)
   {
     return JunctionType::T;
   }
-  if (!s[0] && s[1] && s[2] && !s[3] && !single)
+  if (!s[0] &&  !s[3] && !single)
   {
     return JunctionType::DEAD_END;
   }
@@ -117,10 +122,10 @@ String LineControl::junctionTypeToString(JunctionType type)
   {
   case JunctionType::NONE:
     return "none";
-  case JunctionType::LEFT:
-    return "left";
-  case JunctionType::RIGHT:
-    return "right";
+  case JunctionType::LEFT_T:
+    return "leftT";
+  case JunctionType::RIGHT_T:
+    return "rightT";
   case JunctionType::T:
     return "T";
   case JunctionType::CROSS:
@@ -145,15 +150,15 @@ uint16_t LineControl::getArraySensorValues(int i){
 //   _position = qtr.readLineBlack(_sensors);
 //   if (_position > 1000 && _position < 2500)
 //   {
-//     _lSpeed, _rSpeed = 50;
+//     _lSpeed, _rSpeed =DC_MOTOR_BASE_SPEED;
 //   }
 //   else if (_position < 1000)
 //   {
-//     _lSpeed = 50; _rSpeed = 15;
+//     _lSpeed =DC_MOTOR_BASE_SPEED; _rSpeed = 15;
 //   }
 //   else if (_position > 2000)
 //   {
-//     _lSpeed = 15, _rSpeed = 50;
+//     _lSpeed = 15, _rSpeed =DC_MOTOR_BASE_SPEED;
 //   }
 
 //   motor.drive(_lSpeed, _rSpeed);

@@ -16,7 +16,7 @@ void MotorDriver::begin(uint8_t leftA, uint8_t leftB, uint8_t rightA, uint8_t ri
 
 void MotorDriver::drive(int leftSpeed, int rightSpeed){
     leftSpeed = constrain(leftSpeed, -DC_MOTOR_MAX_SPEED, DC_MOTOR_MAX_SPEED);
-    rightSpeed = constrain(rightSpeed, -DC_MOTOR_MAX_SPEED, DC_MOTOR_MAX_SPEED);
+    rightSpeed = constrain(-rightSpeed, -DC_MOTOR_MAX_SPEED, DC_MOTOR_MAX_SPEED);
 
     if (leftSpeed >= 0) { analogWrite(_lA, leftSpeed); digitalWrite(_lB, LOW); }
     else                   { analogWrite(_lB, -leftSpeed); digitalWrite(_lA, LOW); }
