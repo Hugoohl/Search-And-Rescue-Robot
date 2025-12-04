@@ -15,6 +15,12 @@ public:
     void begin();
     void update();
 
+    void rotate180();
+    void rotate90left();
+    void rotate90right();
+
+    void testLinePidAndTurns();
+
 private:
     // ------------------------
     // Robot global state
@@ -73,9 +79,7 @@ private:
     bool inIslandRegion();      // TODO: implement your island location check
     bool lineLost();
 
-    void rotate180();
-    void rotate90left();
-    void rotate90right();
+
 
     void followRightWall();
     void followLeftWall();

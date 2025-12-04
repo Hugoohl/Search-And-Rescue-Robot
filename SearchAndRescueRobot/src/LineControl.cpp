@@ -2,18 +2,18 @@
 
 LineControl::LineControl() : pid(&_input, &_output, &_setpoint, IR_KP, IR_KI, IR_KD, DIRECT) {}
 
-void LineControl::begin(const uint8_t arrayPins[], const uint8_t singlePin)
+void LineControl::begin(const uint8_t arrayPins[], const uint8_t singlePin[])
 {
 
   qtr.setTypeAnalog();
   qtr.setSensorPins(arrayPins, 4);
+  qtrSingle.setTypeAnalog();
+  qtrSingle.setSensorPins(singlePin, 1);
 
-  _singlePin = singlePin;
-
-  pinMode(_singlePin, INPUT);
+ 
 
   _setpoint = CENTER_POS;
-  pid.SetOutputLimits(-DC_MOTOR_MAX_SPEED, DC_MOTOR_MAX_SPEED);
+  pid.SetOutputLimits(-PID_MAX_SPEED, PID_MAX_SPEED);
   pid.SetMode(AUTOMATIC);
 }
 
@@ -23,6 +23,7 @@ void LineControl::calibrate()
   for (uint16_t i = 0; i < CALIBRATION_TIME / 20; i++)
   {
     qtr.calibrate();
+    qtrSingle.calibrate();
     delay(20);
   }
 }
@@ -33,17 +34,17 @@ void LineControl::computeSpeeds(int &leftSpeed, int &rightSpeed)
 
   if (pos > 1000 && pos < 2500)
   {
-    leftSpeed =DC_MOTOR_BASE_SPEED;
-    rightSpeed =DC_MOTOR_BASE_SPEED;
+    leftSpeed = DC_MOTOR_BASE_SPEED;
+    rightSpeed = DC_MOTOR_BASE_SPEED;
   }
   else if (pos < 1000)
   {
     leftSpeed = DC_MOTOR_TURN_SPEED;
-    rightSpeed =DC_MOTOR_BASE_SPEED;
+    rightSpeed = DC_MOTOR_BASE_SPEED;
   }
   else if (pos > 2000)
   {
-    leftSpeed =DC_MOTOR_BASE_SPEED;
+    leftSpeed = DC_MOTOR_BASE_SPEED;
     rightSpeed = DC_MOTOR_TURN_SPEED;
   }
 }
@@ -51,16 +52,19 @@ void LineControl::computeSpeeds(int &leftSpeed, int &rightSpeed)
 void LineControl::computeSpeedsPid(int &leftSpeed, int &rightSpeed)
 {
   uint16_t pos = qtr.readLineBlack(_arraySensors);
-
   _input = pos;
 
   pid.Compute();
 
-  int correction = static_cast<int>(_output);
+  int correction = (int)_output; // e.g. ±200
 
-  leftSpeed = DC_MOTOR_BASE_SPEED + correction;
-  rightSpeed = DC_MOTOR_BASE_SPEED - correction;
+  // no need to clamp to base, allow reverse
+  correction = constrain(correction, -PID_MAX_SPEED, PID_MAX_SPEED);
 
+  leftSpeed = DC_MOTOR_BASE_SPEED - correction;
+  rightSpeed = DC_MOTOR_BASE_SPEED + correction;
+
+  // these allow reverse (negative values)
   leftSpeed = constrain(leftSpeed, -DC_MOTOR_MAX_SPEED, DC_MOTOR_MAX_SPEED);
   rightSpeed = constrain(rightSpeed, -DC_MOTOR_MAX_SPEED, DC_MOTOR_MAX_SPEED);
 }
@@ -70,14 +74,25 @@ bool LineControl::isLineLost()
   return true;
 }
 
-uint8_t LineControl::getSingle(){
+uint16_t LineControl::getSingle()
+{
   readSingle();
-  return _singleSensor;
+  return _singleSensor[0];
 }
 
 void LineControl::readSingle()
 {
-  _singleSensor = analogRead(_singlePin);
+  qtrSingle.readCalibrated(_singleSensor);
+}
+
+bool LineControl::isJunction()
+{
+  qtr.readCalibrated(_arraySensors);
+
+  bool leftOuter = _arraySensors[0] > JUNCTION_THRESHOLD;
+  bool rightOuter = _arraySensors[3] > JUNCTION_THRESHOLD;
+
+  return (leftOuter || rightOuter);
 }
 
 JunctionType LineControl::detectJunction()
@@ -90,7 +105,7 @@ JunctionType LineControl::detectJunction()
     s[i] = _arraySensors[i] > JUNCTION_THRESHOLD;
   }
 
-  bool single = _singleSensor > JUNCTION_THRESHOLD;
+  bool single = _singleSensor[0] > JUNCTION_THRESHOLD;
 
   if (s[0] && s[1] && s[2] && s[3] && single)
   {
@@ -108,7 +123,7 @@ JunctionType LineControl::detectJunction()
   {
     return JunctionType::T;
   }
-  if (!s[0] &&  !s[3] && !single)
+  if (!s[0] && !s[3] && !single)
   {
     return JunctionType::DEAD_END;
   }
@@ -122,10 +137,16 @@ String LineControl::junctionTypeToString(JunctionType type)
   {
   case JunctionType::NONE:
     return "none";
+  case JunctionType::JUNCTION:
+    return "junction";
   case JunctionType::LEFT_T:
     return "leftT";
   case JunctionType::RIGHT_T:
     return "rightT";
+  case JunctionType::RIGHT:
+    return "right";
+  case JunctionType::LEFT:
+    return "left";
   case JunctionType::T:
     return "T";
   case JunctionType::CROSS:
@@ -137,12 +158,11 @@ String LineControl::junctionTypeToString(JunctionType type)
   }
 }
 
-uint16_t LineControl::getArraySensorValues(int i){
-  
- return _arraySensors[i];
-  
-}
+uint16_t LineControl::getArraySensorValues(int i)
+{
 
+  return _arraySensors[i];
+}
 
 // void LineControl::followLine()
 // {

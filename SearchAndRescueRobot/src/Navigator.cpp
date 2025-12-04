@@ -153,34 +153,94 @@ bool Navigator::lineLost(){
 
 void Navigator::rotate180()
 {
-    unsigned long t = millis();
-    while (millis() - t < 1500) {        
-        _motor.drive(-DC_MOTOR_BASE_SPEED, DC_MOTOR_BASE_SPEED);
+    while(_line.getSingle() <JUNCTION_THRESHOLD_SINGLE){
+        _motor.drive(DC_MOTOR_BASE_SPEED, -DC_MOTOR_BASE_SPEED);
     }
-    Serial.println("Uturn");
     _motor.stop();
 }
 
 void Navigator::rotate90left()
 {
-    unsigned long t = millis();
-    while (millis() - t < 750) {        
-        _motor.drive(-DC_MOTOR_BASE_SPEED, DC_MOTOR_BASE_SPEED);
+    while(_line.getSingle() <JUNCTION_THRESHOLD_SINGLE){
+        _motor.drive(DC_MOTOR_BASE_SPEED, DC_MOTOR_TURN_SPEED);
     }
-    Serial.println("Turning left");
     _motor.stop();
-    
 }
 
 void Navigator::rotate90right()
 {
-    unsigned long t = millis();
-    while (millis() - t < 750) {        
-        _motor.drive(DC_MOTOR_BASE_SPEED, -DC_MOTOR_BASE_SPEED);
+    while(_line.getSingle() <JUNCTION_THRESHOLD_SINGLE){
+        _motor.drive(DC_MOTOR_TURN_SPEED, DC_MOTOR_BASE_SPEED);
     }
-    Serial.println("Turning right");
     _motor.stop();
 }
+
+void Navigator::testLinePidAndTurns()
+{
+    static bool justTurned = false;   // to avoid re-triggering on the same physical junction
+
+    int leftSpeed = 0;
+    int rightSpeed = 0;
+
+    // 1) Check IR for junction
+    bool isJunc  = _line.isJunction();
+
+    if (!isJunc) {
+        // No junction -> normal PID line following
+        justTurned = false;
+        _line.computeSpeedsPid(leftSpeed, rightSpeed);
+        _motor.drive(leftSpeed, rightSpeed);
+        return;
+    }
+
+    // If we're still physically on the same junction as last loop, don't turn again
+    if (justTurned) {
+        _line.computeSpeedsPid(leftSpeed, rightSpeed);
+        _motor.drive(leftSpeed, rightSpeed);
+        return;
+    }
+
+    // We have a new junction
+    justTurned = true;
+    _motor.stop();
+    delay(100);   // small stabilization delay
+
+    // 2) Ask ultrasonic what kind of junction this is
+    JunctionType usJ = _sonar.getJunction();
+
+    // 3) Decide turn based on ultrasonic junction type
+    switch (usJ)
+    {
+    case JunctionType::DEAD_END:
+        // Wall ahead and both sides blocked -> U-turn
+        rotate180();
+        break;
+
+    case JunctionType::LEFT_T:
+        // Front blocked, left open -> turn left
+        rotate90left();
+        break;
+
+    case JunctionType::RIGHT_T:
+        // Front blocked, right open -> turn right
+        rotate90right();
+        break;
+
+    case JunctionType::T:
+    case JunctionType::CROSS:
+        // Both sides open (and maybe front) -> for test, choose right-hand rule
+        rotate90right();
+        break;
+
+    case JunctionType::NONE:
+    default:
+        // Ultrasonic saw nothing special -> go straight (do nothing)
+        break;
+    }
+
+    // After turn, let PID handle re-centering on the new line
+}
+
 
 
 void Navigator::followRightWall()

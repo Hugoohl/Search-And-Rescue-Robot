@@ -1,6 +1,8 @@
 #pragma once
 #include <Arduino.h>
 #include <NewPing.h>
+#include "Types.h"
+#include "Config.h"
 
 class UltraSonic {
 public:
@@ -14,6 +16,7 @@ public:
     unsigned int readDistRight();
     unsigned int readDistLeft();
     unsigned int readDistFront();
+    JunctionType getJunction();
     
 
 private:

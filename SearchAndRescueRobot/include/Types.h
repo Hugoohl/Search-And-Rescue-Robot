@@ -14,6 +14,9 @@ enum class JunctionType {
     T,
     CROSS,
     DEAD_END,
+    JUNCTION,
+    RIGHT,
+    LEFT,
 };
 
 enum class MissionState {

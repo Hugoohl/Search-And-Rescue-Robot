@@ -19,7 +19,8 @@ void setup()
 
   motor.begin(MOTOR_PIN_M1A, MOTOR_PIN_M1B, MOTOR_PIN_M2A, MOTOR_PIN_M2B);
   uint8_t arrayPins[] = {IR_ARRAY_PIN1, IR_ARRAY_PIN2, IR_ARRAY_PIN3, IR_ARRAY_PIN4};
-  line.begin(arrayPins, IR_PIN);
+  uint8_t singlePin[] = {IR_PIN};
+  line.begin(arrayPins, singlePin);
   sonar.begin(US_PIN_TRIG, US_PIN_ECHO_RIGHT, US_PIN_ECHO_LEFT, US_PIN_ECHO_FRONT, MAX_DISTANCE);
   nav.begin();
   line.calibrate();
@@ -29,9 +30,5 @@ void setup()
 
 void loop()
 {
-  int leftspeed = 0;
-  int rightspeed = 0;
-
-  line.computeSpeeds(leftspeed,rightspeed);
-  motor.drive(leftspeed,rightspeed);
+ nav.testLinePidAndTurns();
 }

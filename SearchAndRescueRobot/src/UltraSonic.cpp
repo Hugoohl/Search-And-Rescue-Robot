@@ -12,17 +12,74 @@ void UltraSonic::begin(uint8_t trigPin, uint8_t echoPinRight, uint8_t echoPinLef
     _sonarFront = NewPing(trigPin, echoPinFront, maxDistanceCm);
 }
 
-unsigned int UltraSonic::readDistRight()
-{
-    return _sonarRight.ping_cm(); 
+unsigned int UltraSonic::readDistFront() {
+    unsigned int d = _sonarFront.ping_cm();
+    delay(30); // let echoes die out
+    return d;
 }
 
-unsigned int UltraSonic::readDistLeft()
-{
-    return _sonarLeft.ping_cm(); 
+unsigned int UltraSonic::readDistLeft() {
+    unsigned int d = _sonarLeft.ping_cm();
+    delay(30);
+    return d;
 }
 
-unsigned int UltraSonic::readDistFront()
-{
-    return _sonarFront.ping_cm();
+unsigned int UltraSonic::readDistRight() {
+    unsigned int d = _sonarRight.ping_cm();
+    delay(30);
+    return d;
 }
+
+JunctionType UltraSonic::getJunction(){
+    unsigned int dF = readDistFront();
+    unsigned int dL = readDistLeft();
+    unsigned int dR = readDistRight();
+
+    bool frontOpen = (dF > LOST_WALL);
+    bool leftOpen  = (dL > LOST_WALL);
+    bool rightOpen = (dR > LOST_WALL); 
+
+    // Serial.print("front open: ");
+    // Serial.print(frontOpen);
+    // Serial.println();
+    // Serial.print("left open: ");
+    // Serial.print(leftOpen);
+    // Serial.println();
+    // Serial.print("right open: ");
+    // Serial.print(rightOpen);
+    // Serial.println();
+
+
+
+    if (frontOpen && leftOpen && rightOpen)
+        return JunctionType::CROSS;
+
+    if (!frontOpen && leftOpen && !rightOpen)
+        return JunctionType::LEFT;
+    
+    if (!frontOpen && !leftOpen && rightOpen)
+        return JunctionType::RIGHT;
+  
+    if (!frontOpen && leftOpen && rightOpen)
+        return JunctionType::T;
+
+ 
+    if (frontOpen && leftOpen && !rightOpen)
+        return JunctionType::LEFT_T;
+
+
+    if (frontOpen && !leftOpen && rightOpen)
+        return JunctionType::RIGHT_T;
+
+  
+    if (!frontOpen && !leftOpen && !rightOpen)
+        return JunctionType::DEAD_END;
+
+ 
+    return JunctionType::NONE;
+
+
+}
+
+
+
