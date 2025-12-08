@@ -71,7 +71,16 @@ void LineControl::computeSpeedsPid(int &leftSpeed, int &rightSpeed)
 
 bool LineControl::isLineLost()
 {
-  return true;
+    qtr.readCalibrated(_arraySensors);
+
+    bool anyOnLine = false;
+    for (int i = 0; i < 4; ++i) {
+        if (_arraySensors[i] > JUNCTION_THRESHOLD) { // high = black
+            anyOnLine = true;
+            break;
+        }
+    }
+    return !anyOnLine; 
 }
 
 uint16_t LineControl::getSingle()
@@ -164,22 +173,3 @@ uint16_t LineControl::getArraySensorValues(int i)
   return _arraySensors[i];
 }
 
-// void LineControl::followLine()
-// {
-//   qtr.readCalibrated(_sensors);
-//   _position = qtr.readLineBlack(_sensors);
-//   if (_position > 1000 && _position < 2500)
-//   {
-//     _lSpeed, _rSpeed =DC_MOTOR_BASE_SPEED;
-//   }
-//   else if (_position < 1000)
-//   {
-//     _lSpeed =DC_MOTOR_BASE_SPEED; _rSpeed = 15;
-//   }
-//   else if (_position > 2000)
-//   {
-//     _lSpeed = 15, _rSpeed =DC_MOTOR_BASE_SPEED;
-//   }
-
-//   motor.drive(_lSpeed, _rSpeed);
-// }

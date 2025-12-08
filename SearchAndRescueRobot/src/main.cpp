@@ -7,10 +7,12 @@
 #include "Navigator.h"
 #include <QTRSensors.h>
 #include "UltraSonic.h"
+#include "Gripper.h"
 
 MotorDriver motor;
 LineControl line;
 UltraSonic sonar;
+Gripper serv;
 
 Navigator nav(line, motor, sonar);
 
@@ -21,14 +23,24 @@ void setup()
   uint8_t arrayPins[] = {IR_ARRAY_PIN1, IR_ARRAY_PIN2, IR_ARRAY_PIN3, IR_ARRAY_PIN4};
   uint8_t singlePin[] = {IR_PIN};
   line.begin(arrayPins, singlePin);
+  serv.begin(GRIP_SERVO_PIN, TILT_SERVO_PIN);
   sonar.begin(US_PIN_TRIG, US_PIN_ECHO_RIGHT, US_PIN_ECHO_LEFT, US_PIN_ECHO_FRONT, MAX_DISTANCE);
   nav.begin();
-  line.calibrate();
+  //line.calibrate();
 
   Serial.begin(9600);
 }
 
+
+
 void loop()
 {
- nav.testLinePidAndTurns();
+  Serial.println("Pickup");
+  serv.pickup();
+  delay(2000);
+  Serial.println("Release");
+  serv.release();
+  delay(2000);
 }
+
+

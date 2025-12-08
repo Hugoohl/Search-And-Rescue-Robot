@@ -153,6 +153,7 @@ bool Navigator::lineLost(){
 
 void Navigator::rotate180()
 {
+    Serial.println("rotate180");
     while(_line.getSingle() <JUNCTION_THRESHOLD_SINGLE){
         _motor.drive(DC_MOTOR_BASE_SPEED, -DC_MOTOR_BASE_SPEED);
     }
@@ -161,6 +162,7 @@ void Navigator::rotate180()
 
 void Navigator::rotate90left()
 {
+    Serial.println("rotate90left");
     while(_line.getSingle() <JUNCTION_THRESHOLD_SINGLE){
         _motor.drive(DC_MOTOR_BASE_SPEED, DC_MOTOR_TURN_SPEED);
     }
@@ -169,6 +171,7 @@ void Navigator::rotate90left()
 
 void Navigator::rotate90right()
 {
+    Serial.println("rotate90right");
     while(_line.getSingle() <JUNCTION_THRESHOLD_SINGLE){
         _motor.drive(DC_MOTOR_TURN_SPEED, DC_MOTOR_BASE_SPEED);
     }
@@ -197,7 +200,7 @@ void Navigator::testLinePidAndTurns()
     if (justTurned) {
         _line.computeSpeedsPid(leftSpeed, rightSpeed);
         _motor.drive(leftSpeed, rightSpeed);
-        return;
+        return;  
     }
 
     // We have a new junction
@@ -207,6 +210,7 @@ void Navigator::testLinePidAndTurns()
 
     // 2) Ask ultrasonic what kind of junction this is
     JunctionType usJ = _sonar.getJunction();
+    Serial.println(_line.junctionTypeToString(usJ));
 
     // 3) Decide turn based on ultrasonic junction type
     switch (usJ)
@@ -245,78 +249,208 @@ void Navigator::testLinePidAndTurns()
 
 void Navigator::followRightWall()
 {
-    int leftSpeed = 0;
+    int leftSpeed  = 0;
     int rightSpeed = 0;
 
-    // Base line following
-    lineLost();
-    _line.computeSpeeds(leftSpeed, rightSpeed);
+    // --- 1. If the line is completely gone: use pure wall-follow ---
+    if (_line.isLineLost()) {
+        // Simple right-wall-follow using ultrasound only
 
-    unsigned int distF = _sonar.readDistFront();
-    unsigned int distR = _sonar.readDistRight();
-    unsigned int distL = _sonar.readDistLeft();
+        unsigned int distF = _sonar.readDistFront();
+        unsigned int distR = _sonar.readDistRight();
+        unsigned int distL = _sonar.readDistLeft();
 
-    if (distF == 0) distF = MAX_DISTANCE;
-    if (distR == 0) distR = MAX_DISTANCE;
-    if (distL == 0) distL = MAX_DISTANCE;
+        // Treat 0 as "no echo" = very far
+        if (distF == 0) distF = MAX_DISTANCE;
+        if (distR == 0) distR = MAX_DISTANCE;
+        if (distL == 0) distL = MAX_DISTANCE;
 
-    if (distF < THRESHOLD_DISTANCE)
-    {
-        if (distR > LOST_WALL) {
-            // Turn RIGHT
-            rotate90right();
+        // If wall directly in front: decide using right-hand rule
+        if (distF < THRESHOLD_DISTANCE) {
+            if (distR > LOST_WALL) {
+                rotate90right();      // right open -> go right
+            } else if (distL > LOST_WALL) {
+                rotate90left();       // right blocked, left open
+            } else {
+                rotate180();          // dead end
+            }
+            return;
         }
-        else if (distL > LOST_WALL) {
-            // Turn LEFT
-            rotate90left();
-        } else if (distL > LOST_WALL && distR > LOST_WALL){
-            // Turn RIGHT
-              rotate90right();
-        }
-        else {
-            // DEAD END
-            rotate180();
-        }
+
+        // No wall in front: try to keep a distance to right wall (very simple)
+        // Optional PD on right distance; for now just drive straight:
+        leftSpeed  = DC_MOTOR_BASE_SPEED;
+        rightSpeed = DC_MOTOR_BASE_SPEED;
+        _motor.drive(leftSpeed, rightSpeed);
+        return;
     }
 
-    _motor.drive(leftSpeed, rightSpeed);
+    // --- 2. Line is present: follow with PID ---
+    _line.computeSpeedsPid(leftSpeed, rightSpeed);
+
+    // Check for junction on the line
+    JunctionType irJunction = _line.detectJunction();
+
+    static bool justTurned = false; // prevents repeated turning on same physical junction
+
+    if (irJunction == JunctionType::NONE) {
+        justTurned = false;  // normal segment again
+        _motor.drive(leftSpeed, rightSpeed);
+        return;
+    }
+
+    // If we already handled this junction in previous loop, just keep following
+    if (justTurned) {
+        _motor.drive(leftSpeed, rightSpeed);
+        return;
+    }
+
+    // New junction detected
+    justTurned = true;
+    _motor.stop();
+    delay(100);  // small stabilization
+
+    // --- 3. Use ultrasonic to determine junction type around us ---
+    JunctionType usJunction = _sonar.getJunction();
+
+    switch (usJunction)
+    {
+    case JunctionType::DEAD_END:
+        // Wall ahead + both sides blocked
+        rotate180();
+        break;
+
+    case JunctionType::LEFT_T:
+        // Front blocked, left open, right blocked
+        // For right-hand wall-follow, we don't like going left, but if that's only way:
+        rotate90left();
+        break;
+
+    case JunctionType::RIGHT_T:
+        // Front blocked, right open, left blocked
+        rotate90right();
+        break;
+
+    case JunctionType::T:
+        // Both sides open, front blocked -> right-hand rule: go RIGHT
+        rotate90right();
+        break;
+
+    case JunctionType::CROSS:
+        // All open -> for test, also choose RIGHT
+        rotate90right();
+        break;
+
+    case JunctionType::NONE:
+    default:
+        // Ultrasonic couldn't classify well -> continue straight, PID will handle
+        break;
+    }
+
+    // After turn, next loop will re-enter here and PID will pick up the new line
 }
 
 void Navigator::followLeftWall()
 {
-    int leftSpeed = 0;
+    int leftSpeed  = 0;
     int rightSpeed = 0;
-    lineLost();
-    
-    _line.computeSpeeds(leftSpeed, rightSpeed);
 
-    unsigned int distF = _sonar.readDistFront();
-    unsigned int distR = _sonar.readDistRight();
-    unsigned int distL = _sonar.readDistLeft();
+    // --- 1. If the line is completely gone: use pure wall-follow ---
+    if (_line.isLineLost()) {
+        // Simple right-wall-follow using ultrasound only
 
-    if (distF < THRESHOLD_DISTANCE)
-    {
-        if (distL > LOST_WALL) {
-            // Turn LEFT
-            leftSpeed  = DC_MOTOR_TURN_SPEED;
-            rightSpeed = DC_MOTOR_BASE_SPEED;
+        unsigned int distF = _sonar.readDistFront();
+        unsigned int distR = _sonar.readDistRight();
+        unsigned int distL = _sonar.readDistLeft();
+
+        // Treat 0 as "no echo" = very far
+        if (distF == 0) distF = MAX_DISTANCE;
+        if (distR == 0) distR = MAX_DISTANCE;
+        if (distL == 0) distL = MAX_DISTANCE;
+
+        // If wall directly in front: decide using right-hand rule
+        if (distF < THRESHOLD_DISTANCE) {
+            if (distL > LOST_WALL) {
+                rotate90left();      // right open -> go right
+            } else if (distR > LOST_WALL) {
+                rotate90right();       // right blocked, left open
+            } else {
+                rotate180();          // dead end
+            }
+            return;
         }
-        else if (distR > LOST_WALL) {
-            // Turn RIGHT
-            leftSpeed  = DC_MOTOR_BASE_SPEED;
-            rightSpeed = DC_MOTOR_TURN_SPEED;
-        } else if (distL > LOST_WALL && distR > LOST_WALL){
-            // Turn RIGHT
-            leftSpeed  = DC_MOTOR_TURN_SPEED;
-            rightSpeed = DC_MOTOR_BASE_SPEED;
-        }
-        else {
-            // DEAD END
-            rotate180();
-        }
+
+        // No wall in front: try to keep a distance to right wall (very simple)
+        // Optional PD on right distance; for now just drive straight:
+        leftSpeed  = DC_MOTOR_BASE_SPEED;
+        rightSpeed = DC_MOTOR_BASE_SPEED;
+        _motor.drive(leftSpeed, rightSpeed);
+        return;
     }
 
-    _motor.drive(leftSpeed, rightSpeed);
+    // --- 2. Line is present: follow with PID ---
+    _line.computeSpeedsPid(leftSpeed, rightSpeed);
+
+    // Check for junction on the line
+    JunctionType irJunction = _line.detectJunction();
+
+    static bool justTurned = false; // prevents repeated turning on same physical junction
+
+    if (irJunction == JunctionType::NONE) {
+        justTurned = false;  // normal segment again
+        _motor.drive(leftSpeed, rightSpeed);
+        return;
+    }
+
+    // If we already handled this junction in previous loop, just keep following
+    if (justTurned) {
+        _motor.drive(leftSpeed, rightSpeed);
+        return;
+    }
+
+    // New junction detected
+    justTurned = true;
+    _motor.stop();
+    delay(100);  // small stabilization
+
+    // --- 3. Use ultrasonic to determine junction type around us ---
+    JunctionType usJunction = _sonar.getJunction();
+
+    switch (usJunction)
+    {
+    case JunctionType::DEAD_END:
+        // Wall ahead + both sides blocked
+        rotate180();
+        break;
+
+    case JunctionType::LEFT_T:
+        // Front blocked, left open, right blocked
+        // For right-hand wall-follow, we don't like going left, but if that's only way:
+        rotate90left();
+        break;
+
+    case JunctionType::RIGHT_T:
+        // Front blocked, right open, left blocked
+        rotate90right();
+        break;
+
+    case JunctionType::T:
+        // Both sides open, front blocked -> right-hand rule: go RIGHT
+        rotate90left();
+        break;
+
+    case JunctionType::CROSS:
+        // All open -> for test, also choose RIGHT
+        rotate90left();
+        break;
+
+    case JunctionType::NONE:
+    default:
+        // Ultrasonic couldn't classify well -> continue straight, PID will handle
+        break;
+    }
+
+    // After turn, next loop will re-enter here and PID will pick up the new line
 }
 
 void Navigator::handleSearchRight1()
@@ -386,8 +520,7 @@ void Navigator::handleSearchLeftFinal()
 // ---- ISLAND SEARCH PATTERN ----
 void Navigator::handleIslandSearch()
 {
-    // You implement your pattern here
-    // Hard-coded movement
+   
 
     if (detectCylinder()) {
         _phase = MissionState::PICKUP;
