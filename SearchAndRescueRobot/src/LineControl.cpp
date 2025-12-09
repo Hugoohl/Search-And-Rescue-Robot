@@ -17,6 +17,11 @@ void LineControl::begin(const uint8_t arrayPins[], const uint8_t singlePin[])
   pid.SetMode(AUTOMATIC);
 }
 
+void LineControl::calibrateStep()
+{
+    qtr.calibrate();
+}
+
 void LineControl::calibrate()
 {
 
@@ -61,8 +66,8 @@ void LineControl::computeSpeedsPid(int &leftSpeed, int &rightSpeed)
   // no need to clamp to base, allow reverse
   correction = constrain(correction, -PID_MAX_SPEED, PID_MAX_SPEED);
 
-  leftSpeed = DC_MOTOR_BASE_SPEED - correction;
-  rightSpeed = DC_MOTOR_BASE_SPEED + correction;
+  leftSpeed = DC_MOTOR_BASE_SPEED + correction;
+  rightSpeed = DC_MOTOR_BASE_SPEED - correction;
 
   // these allow reverse (negative values)
   leftSpeed = constrain(leftSpeed, -DC_MOTOR_MAX_SPEED, DC_MOTOR_MAX_SPEED);

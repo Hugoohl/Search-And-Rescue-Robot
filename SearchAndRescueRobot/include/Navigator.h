@@ -6,11 +6,12 @@
 #include "MotorDriver.h"
 #include "LineControl.h"
 #include "UltraSonic.h"
+#include "Gripper.h"
 
 class Navigator 
 {
 public:
-    Navigator(LineControl &line, MotorDriver &motor, UltraSonic &sonar);
+    Navigator(LineControl &line, MotorDriver &motor, UltraSonic &sonar, Gripper &serv);
 
     void begin();
     void update();
@@ -42,6 +43,7 @@ private:
     LineControl   &_line;
     MotorDriver   &_motor;
     UltraSonic    &_sonar;
+    Gripper       &_serv;
 
     // Time tracking if needed
     unsigned long _missionStartTime = 0;

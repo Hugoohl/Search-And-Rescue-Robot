@@ -30,6 +30,11 @@ unsigned int UltraSonic::readDistRight() {
     return d;
 }
 
+bool UltraSonic::cylinderDetected() {
+    if(readDistFront() < CYLINDER_DIST){ return true;}
+    return false;
+}
+
 JunctionType UltraSonic::getJunction(){
     unsigned int dF = readDistFront();
     unsigned int dL = readDistLeft();

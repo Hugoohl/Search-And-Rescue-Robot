@@ -1,7 +1,7 @@
 #include "Navigator.h"
 #include "Arduino.h"
 
-Navigator::Navigator(LineControl &line, MotorDriver &motor, UltraSonic &sonar) : _line(line), _motor(motor), _sonar(sonar) {}
+Navigator::Navigator(LineControl &line, MotorDriver &motor, UltraSonic &sonar, Gripper &serv) : _line(line), _motor(motor), _sonar(sonar), _serv(serv) {}
 
 void Navigator::begin()
 {
@@ -52,10 +52,57 @@ void Navigator::handleWaitForStart()
 
 void Navigator::handleCalibrating()
 {
+       // static so the value is kept between calls
+    static unsigned long calibStartTime = 0;
+
+    // First time we enter this state: remember start time
+    if (calibStartTime == 0) {
+        calibStartTime = millis();
+        Serial.println("Calibration started, sweeping over line...");
+    }
+
+    unsigned long elapsed = millis() - calibStartTime;
+
+    // 1) During CALIBRATION_TIME: sweep over the line and collect calibration data
+    if (elapsed < CALIBRATION_TIME) {
+
+        // Call one calibration step each loop
+        _line.calibrateStep();
+
+        // Simple sweep pattern:
+        // First half of the time: turn one way
+        // Second half: turn the other way
+        int sweepSpeed = DC_MOTOR_BASE_SPEED / 2;   // slow and steady
+
+        if (elapsed < CALIBRATION_TIME / 2) {
+            // turn left: left wheel backwards, right wheel forwards
+            _motor.drive(-sweepSpeed, sweepSpeed);
+        } else {
+            // turn right: left wheel forwards, right wheel backwards
+            _motor.drive(sweepSpeed, -sweepSpeed);
+        }
+
+        return; // stay in CALIBRATING until time is up
+    }
+
+    // 2) Calibration done: use PID to re-center on the line for a short time
+    if (elapsed < CALIBRATION_TIME + 1000) { // 1 second of line following
+        int leftSpeed = 0;
+        int rightSpeed = 0;
+
+        _line.computeSpeedsPid(leftSpeed, rightSpeed);
+        _motor.drive(leftSpeed, rightSpeed);
+
+        return;
+    }
+
+    // 3) Finished: stop, reset, start mission
     _motor.stop();
-    _line.calibrate();
+    calibStartTime = 0;   // reset for next time we ever calibrate
+
     Serial.println("Calibration Done, starting mission");
-    _phase = MissionState::SEARCH_RIGHT_1;
+
+    _phase = MissionState::SEARCH_RIGHT_1;   // or your first mission phase
     _state = RobotState::RUN_MISSION;
 }
 
@@ -544,7 +591,8 @@ void Navigator::handleReturnLeftFinal()
 // ---- PICKUP ----
 void Navigator::handlePickup()
 {
-    // TODO: add servo/arm code
+    _motor.stop();
+    
 
     rotate180();
 

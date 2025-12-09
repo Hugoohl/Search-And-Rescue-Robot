@@ -1,10 +1,10 @@
 #pragma once
 
 //DcMotor Pins
-#define MOTOR_PIN_M1A 5
-#define MOTOR_PIN_M1B 6
-#define MOTOR_PIN_M2A 10
-#define MOTOR_PIN_M2B 9
+#define MOTOR_PIN_M1A 6
+#define MOTOR_PIN_M1B 5
+#define MOTOR_PIN_M2A 3
+#define MOTOR_PIN_M2B 11
 
 //Servo Pins
 
@@ -28,7 +28,7 @@
 
 // Servo
 
-#define TILT_SERVO_PIN 11
-#define GRIP_SERVO_PIN 3
+#define TILT_SERVO_PIN 10
+#define GRIP_SERVO_PIN 9
 
 

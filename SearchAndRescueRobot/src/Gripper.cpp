@@ -4,6 +4,17 @@
 void Gripper::begin(uint8_t gripPin, uint8_t tiltPin){
     gripServ.attach(gripPin);   // continuous servo (gripper)
     tiltServ.attach(tiltPin);   // standard servo (tilt)
+    tiltServ.write(SERVO_NORM_ANGLE);
+    gripServ.write(SERVO_RELEASE_SPEED);   // e.g. 180 = full speed open
+
+    unsigned long start = millis();
+    while (millis() - start < SERVO_RELEASE_TIME) {
+        // blocking but simple – fine for now
+    }
+    
+    
+    
+
 }
 
 void Gripper::pickup(){

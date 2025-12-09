@@ -17,6 +17,7 @@ public:
     unsigned int readDistLeft();
     unsigned int readDistFront();
     JunctionType getJunction();
+    bool cylinderDetected();
     
 
 private:

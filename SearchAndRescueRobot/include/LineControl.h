@@ -11,6 +11,7 @@ public:
     LineControl();
     void begin(const uint8_t arrayPins[], const uint8_t singlePin[]);
     void calibrate();
+    void calibrateStep();
     void computeSpeedsPid(int &leftSpeed, int &rightSpeed);
     void computeSpeeds(int &leftSpeed, int &rightSpeed);
     bool isLineLost();

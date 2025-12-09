@@ -14,7 +14,7 @@ LineControl line;
 UltraSonic sonar;
 Gripper serv;
 
-Navigator nav(line, motor, sonar);
+Navigator nav(line, motor, sonar, serv);
 
 void setup()
 {
@@ -26,21 +26,41 @@ void setup()
   serv.begin(GRIP_SERVO_PIN, TILT_SERVO_PIN);
   sonar.begin(US_PIN_TRIG, US_PIN_ECHO_RIGHT, US_PIN_ECHO_LEFT, US_PIN_ECHO_FRONT, MAX_DISTANCE);
   nav.begin();
-  //line.calibrate();
-
+  line.calibrate();
+ 
+  
+  
+  
   Serial.begin(9600);
+  
 }
 
 
+int leftSpeed = 0;
+int rightSpeed = 0;
 
-void loop()
-{
-  Serial.println("Pickup");
-  serv.pickup();
-  delay(2000);
-  Serial.println("Release");
-  serv.release();
-  delay(2000);
+void loop() {
+
+
+  line.computeSpeeds(leftSpeed, rightSpeed);
+  motor.drive(leftSpeed,rightSpeed);
+  delay(500);
+
+  if(sonar.cylinderDetected()){
+    motor.stop();
+    delay(100);
+    serv.pickup();
+    delay(100);
+    line.computeSpeedsPid(leftSpeed, rightSpeed);
+    motor.drive(leftSpeed,rightSpeed);
+    
+  }
+
+
+ 
 }
+
+  
+
 
 

@@ -24,6 +24,8 @@ constexpr uint16_t JUNCTION_THRESHOLD_SINGLE = 900;
 constexpr uint16_t MAX_DISTANCE = 500;
 constexpr uint8_t THRESHOLD_DISTANCE = 15;
 constexpr uint8_t LOST_WALL = 30;
+constexpr uint8_t CYLINDER_DIST = 3;
+
 
 //Servos
 
@@ -31,8 +33,8 @@ constexpr uint8_t SERVO_GRIP_SPEED    = 0;    // continuous servo close
 constexpr uint8_t SERVO_RELEASE_SPEED = 180;  // continuous servo open
 constexpr uint16_t SERVO_RELEASE_TIME = 400;  // was 100, made longer
 
-constexpr uint8_t SERVO_TILT_ANGLE = 10;       // tilt down
-constexpr uint8_t SERVO_NORM_ANGLE = 100;      // normal upright
+constexpr uint8_t SERVO_TILT_ANGLE =10;       // tilt down
+constexpr uint8_t SERVO_NORM_ANGLE = 120;      // normal upright
 
 // New timing constants
 constexpr uint16_t SERVO_TILT_TIME = 700;     // ms: time to fully tilt
