@@ -94,6 +94,14 @@ uint16_t LineControl::getSingle()
   return _singleSensor[0];
 }
 
+bool LineControl::isOnLine(){
+  int pos = qtr.readLineBlack(_arraySensors);
+  if (pos >1000 && pos <2000){
+    return true;
+  }
+  return false;
+}
+
 void LineControl::readSingle()
 {
   qtrSingle.readCalibrated(_singleSensor);
@@ -143,6 +151,13 @@ JunctionType LineControl::detectJunction()
   }
 
   return JunctionType::NONE;
+}
+
+bool LineControl::isDeadend(){
+  if(detectJunction() == JunctionType::DEAD_END){
+    return true;
+  }
+  return false;
 }
 
 String LineControl::junctionTypeToString(JunctionType type)

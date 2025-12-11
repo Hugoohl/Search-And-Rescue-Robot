@@ -18,49 +18,30 @@ Navigator nav(line, motor, sonar, serv);
 
 void setup()
 {
-
+  Serial.begin(9600);
   motor.begin(MOTOR_PIN_M1A, MOTOR_PIN_M1B, MOTOR_PIN_M2A, MOTOR_PIN_M2B);
   uint8_t arrayPins[] = {IR_ARRAY_PIN1, IR_ARRAY_PIN2, IR_ARRAY_PIN3, IR_ARRAY_PIN4};
   uint8_t singlePin[] = {IR_PIN};
   line.begin(arrayPins, singlePin);
   serv.begin(GRIP_SERVO_PIN, TILT_SERVO_PIN);
-  sonar.begin(US_PIN_TRIG, US_PIN_ECHO_RIGHT, US_PIN_ECHO_LEFT, US_PIN_ECHO_FRONT, MAX_DISTANCE);
+  sonar.begin(US_PIN_TRIG_RIGHT,US_PIN_TRIG_LEFT,US_PIN_TRIG_FRONT, US_PIN_ECHO_RIGHT, US_PIN_ECHO_LEFT, US_PIN_ECHO_FRONT, MAX_DISTANCE);
   nav.begin();
   line.calibrate();
+
  
   
-  
-  
-  Serial.begin(9600);
+
   
 }
-
 
 int leftSpeed = 0;
 int rightSpeed = 0;
 
-void loop() {
-
-
-  line.computeSpeeds(leftSpeed, rightSpeed);
-  motor.drive(leftSpeed,rightSpeed);
-  delay(500);
-
-  if(sonar.cylinderDetected()){
-    motor.stop();
-    delay(100);
-    serv.pickup();
-    delay(100);
-    line.computeSpeedsPid(leftSpeed, rightSpeed);
-    motor.drive(leftSpeed,rightSpeed);
-    
-  }
-
-
+void loop()
+{
  
-}
-
+  nav.update();
   
 
-
+}
 

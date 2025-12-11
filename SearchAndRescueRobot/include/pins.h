@@ -9,7 +9,9 @@
 //Servo Pins
 
 //Ultra sonic Pins
-#define US_PIN_TRIG 13
+#define US_PIN_TRIG_RIGHT 13
+#define US_PIN_TRIG_LEFT 2
+#define US_PIN_TRIG_FRONT A5
 #define US_PIN_ECHO_RIGHT 12
 #define US_PIN_ECHO_LEFT 7
 #define US_PIN_ECHO_FRONT 8

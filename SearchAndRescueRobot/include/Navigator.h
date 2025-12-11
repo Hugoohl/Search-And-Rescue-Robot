@@ -21,6 +21,7 @@ public:
     void rotate90right();
 
     void testLinePidAndTurns();
+    bool detectCylinder(); 
 
 private:
     // ------------------------
@@ -76,7 +77,7 @@ private:
     // Utility helpers
     // ------------------------
     bool startButtonPressed();
-    bool detectCylinder();      // TODO: implement your own logic
+        
     bool atStartSquare();       // TODO: implement your own logic
     bool inIslandRegion();      // TODO: implement your island location check
     bool lineLost();
