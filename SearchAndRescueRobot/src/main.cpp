@@ -41,8 +41,9 @@ int rightSpeed = 0;
 void loop()
 {
  
-  nav.followRightWall();
-  
+  line.computeSpeedsPid(leftSpeed, rightSpeed);
+  motor.drive(leftSpeed, rightSpeed);
+
 
 }
 

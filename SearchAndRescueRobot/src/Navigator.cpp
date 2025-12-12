@@ -223,34 +223,50 @@ bool Navigator::lineLost()
     return false;
 }
 
-void Navigator::rotate180()
-{
+void Navigator::rotate180(){
     Serial.println("rotate180");
-    while (_line.getSingle()<JUNCTION_THRESHOLD)
-    {
-        _motor.drive(DC_MOTOR_BASE_SPEED, -DC_MOTOR_BASE_SPEED);
-    }
-    _motor.stop();
+  const uint16_t TH = JUNCTION_THRESHOLD_SINGLE;
+
+  // ensure we leave the current black patch first
+  while (_line.getSingle() > TH) {
+    _motor.drive(DC_MOTOR_BASE_SPEED, -DC_MOTOR_BASE_SPEED);
+  }
+  // then rotate until we find the new line
+  while (_line.getSingle() < TH) {
+    _motor.drive(DC_MOTOR_BASE_SPEED, -DC_MOTOR_BASE_SPEED);
+  }
+  _motor.stop();
 }
 
 void Navigator::rotate90left()
 {
     Serial.println("rotate90left");
-    while (_line.getSingle()<JUNCTION_THRESHOLD)
-    {
-        _motor.drive(DC_MOTOR_BASE_SPEED, DC_MOTOR_TURN_SPEED);
-    }
-    _motor.stop();
+  const uint16_t TH = JUNCTION_THRESHOLD_SINGLE;
+
+  // ensure we leave the current black patch first
+  while (_line.getSingle() > TH) {
+    _motor.drive(DC_MOTOR_TURN_SPEED, DC_MOTOR_BASE_SPEED);
+  }
+  // then rotate until we find the new line
+  while (_line.getSingle() < TH) {
+    _motor.drive(DC_MOTOR_TURN_SPEED, DC_MOTOR_BASE_SPEED);
+  }
+  _motor.stop();
 }
 
-void Navigator::rotate90right()
-{
-    Serial.println("rotate90right");
-    while (_line.getSingle()<JUNCTION_THRESHOLD)
-    {
-        _motor.drive(DC_MOTOR_TURN_SPEED, DC_MOTOR_BASE_SPEED);
-    }
-    _motor.stop();
+void Navigator::rotate90right() {
+    Serial.println("rotate90lright");
+  const uint16_t TH = JUNCTION_THRESHOLD_SINGLE;
+
+  // ensure we leave the current black patch first
+  while (_line.getSingle() > TH) {
+    _motor.drive(DC_MOTOR_BASE_SPEED, DC_MOTOR_TURN_SPEED);
+  }
+  // then rotate until we find the new line
+  while (_line.getSingle() < TH) {
+    _motor.drive(DC_MOTOR_BASE_SPEED, DC_MOTOR_TURN_SPEED);
+  }
+  _motor.stop();
 }
 
 void Navigator::testLinePidAndTurns()
@@ -385,38 +401,39 @@ void Navigator::followRightWall()
     _line.computeSpeedsPid(leftSpeed, rightSpeed);
 
     // Check for junction on the line
-    bool irJunction = _line.isJunction();
+    bool irJunction = _line.isJunction() && _line.isDeadend();
+
+    
 
     static bool justTurned = false; // prevents repeated turning on same physical junction
 
     if (!irJunction)
     {
-        justTurned = false; // normal segment again
+        //justTurned = false; // normal segment again
         _motor.drive(leftSpeed, rightSpeed);
         return;
     }
 
     // If we already handled this junction in previous loop, just keep following
-    if (justTurned)
-    {
-        _motor.drive(leftSpeed, rightSpeed);
-        return;
-    }
+    // if (justTurned)
+    // {
+    //     _motor.drive(leftSpeed, rightSpeed);
+    //     return;
+    // }
 
     // New junction detected
-    justTurned = true;
+    //justTurned = true;
     Serial.println("Junction detected:");
-    _motor.stop();
-    delay(100); // small stabilization
+ 
 
     // --- 3. Use ultrasonic to determine junction type around us ---
     JunctionType usJunction = _sonar.getJunction();
 
-    // if(_line.detectJunction() == JunctionType::NONE){
-    //     usJunction = JunctionType::NONE;
-    // }
-    Serial.println(_line.junctionTypeToString(usJunction));
+    
 
+
+    Serial.println(_line.junctionTypeToString(usJunction));
+ 
     switch (usJunction)
     {
     case JunctionType::DEAD_END:
@@ -434,6 +451,17 @@ void Navigator::followRightWall()
         // Front blocked, right open, left blocked
         rotate90right();
         break;
+    
+        
+    case JunctionType::RIGHT:
+        // Front blocked, right open, left blocked
+        rotate90right();
+    break;
+
+    case JunctionType::LEFT:
+        // Front blocked, right open, left blocked
+        rotate90left();
+    break;
 
     case JunctionType::T:
         // Both sides open, front blocked -> right-hand rule: go RIGHT

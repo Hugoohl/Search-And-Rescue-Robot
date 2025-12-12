@@ -13,7 +13,7 @@ void LineControl::begin(const uint8_t arrayPins[], const uint8_t singlePin[])
  
 
   _setpoint = CENTER_POS;
-  pid.SetOutputLimits(-PID_MAX_SPEED, PID_MAX_SPEED);
+  pid.SetOutputLimits(-DC_MOTOR_MAX_SPEED, DC_MOTOR_BASE_SPEED);
   pid.SetMode(AUTOMATIC);
 }
 
@@ -47,7 +47,7 @@ void LineControl::computeSpeeds(int &leftSpeed, int &rightSpeed)
     leftSpeed = DC_MOTOR_TURN_SPEED;
     rightSpeed = DC_MOTOR_BASE_SPEED;
   }
-  else if (pos > 2000)
+  else if (pos > 2500)
   {
     leftSpeed = DC_MOTOR_BASE_SPEED;
     rightSpeed = DC_MOTOR_TURN_SPEED;
@@ -58,6 +58,7 @@ void LineControl::computeSpeedsPid(int &leftSpeed, int &rightSpeed)
 {
   uint16_t pos = qtr.readLineBlack(_arraySensors);
   _input = pos;
+  
 
   pid.Compute();
 
@@ -70,7 +71,7 @@ void LineControl::computeSpeedsPid(int &leftSpeed, int &rightSpeed)
   leftSpeed = DC_MOTOR_BASE_SPEED + correction;
   rightSpeed = DC_MOTOR_BASE_SPEED - correction;
 
-  // these allow reverse (negative values)
+  
   leftSpeed = constrain(leftSpeed, 0, DC_MOTOR_MAX_SPEED);
   rightSpeed = constrain(rightSpeed, 0, DC_MOTOR_MAX_SPEED);
 }
@@ -111,11 +112,18 @@ void LineControl::readSingle()
 bool LineControl::isJunction()
 {
   qtr.readCalibrated(_arraySensors);
+  bool s[4];
+  for (int i = 0; i < 4; i++)
+  {
+    s[i] = _arraySensors[i] > JUNCTION_THRESHOLD;
+  }
 
-  bool leftOuter = _arraySensors[0] > JUNCTION_THRESHOLD;
-  bool rightOuter = _arraySensors[3] > JUNCTION_THRESHOLD;
 
-  return (leftOuter || rightOuter);
+  if((s[0] || s[3]) && s[2] && s[1]){
+    Serial.println("Junction deteteced");
+  }
+
+  return ((s[0] || s[3]) && s[2] && s[1]);
 }
 
 JunctionType LineControl::detectJunction()

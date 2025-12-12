@@ -23,6 +23,9 @@ public:
     void testLinePidAndTurns();
     bool detectCylinder(); 
 
+    void followRightWall();
+    void followLeftWall();
+
 private:
     // ------------------------
     // Robot global state
@@ -84,7 +87,6 @@ private:
 
 
 
-    void followRightWall();
-    void followLeftWall();
+
 };
 

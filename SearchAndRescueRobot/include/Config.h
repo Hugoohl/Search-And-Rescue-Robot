@@ -3,14 +3,16 @@
 
 // DC motors
 constexpr int DC_MOTOR_MAX_SPEED = 255;
-constexpr int DC_MOTOR_BASE_SPEED = 120;
+constexpr int DC_MOTOR_BASE_SPEED = 95;
 constexpr int DC_MOTOR_TURN_SPEED = 0;
-constexpr int DC_MOTOR_CALIB_SPEED = 50;
+constexpr int DC_MOTOR_CALIB_SPEED = 60;
+
+
 
 // Line PID
 constexpr double IR_KP = 0.2;
 constexpr double IR_KI = 0.0;
-constexpr double IR_KD = 1.2;
+constexpr double IR_KD = 10;
 constexpr int PID_MAX_SPEED = 50;
 
 

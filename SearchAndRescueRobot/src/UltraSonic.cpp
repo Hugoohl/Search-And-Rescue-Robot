@@ -97,12 +97,12 @@ JunctionType UltraSonic::getJunction()
     bool leftOpen = (dL > LOST_WALL);
     bool rightOpen = (dR > LOST_WALL);
 
-    Serial.print("F: ");
-    Serial.print(dF);
-    Serial.print(" L: ");
-    Serial.print(dL);
-    Serial.print(" R: ");
-    Serial.println(dR);
+    // Serial.print("F: ");
+    // Serial.print(dF);
+    // Serial.print(" L: ");
+    // Serial.print(dL);
+    // Serial.print(" R: ");
+    // Serial.println(dR);
 
     if (frontOpen && leftOpen && rightOpen)
         return JunctionType::CROSS;
