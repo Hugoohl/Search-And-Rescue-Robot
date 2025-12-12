@@ -1,25 +1,27 @@
 #include "LineControl.h"
 
-LineControl::LineControl() : pid(&_input, &_output, &_setpoint, IR_KP, IR_KI, IR_KD, DIRECT) {}
+LineControl::LineControl()
+    : pid(&_input, &_output, &_setpoint, IR_KP, IR_KI, IR_KD, DIRECT) {}
 
 void LineControl::begin(const uint8_t arrayPins[], const uint8_t singlePin[])
 {
-
   qtr.setTypeAnalog();
   qtr.setSensorPins(arrayPins, 4);
+
   qtrSingle.setTypeAnalog();
   qtrSingle.setSensorPins(singlePin, 1);
 
- 
-
   _setpoint = CENTER_POS;
-  pid.SetOutputLimits(-DC_MOTOR_MAX_SPEED, DC_MOTOR_BASE_SPEED);
+  _posFiltered = CENTER_POS;
+
+  pid.SetOutputLimits(-PID_MAX_SPEED, PID_MAX_SPEED);
   pid.SetMode(AUTOMATIC);
 }
 
 void LineControl::calibrateStep()
 {
-    qtr.calibrate();
+  qtr.calibrate();
+  qtrSingle.calibrate();
 }
 
 void LineControl::calibrate()
@@ -31,6 +33,27 @@ void LineControl::calibrate()
     qtrSingle.calibrate();
     delay(20);
   }
+}
+
+void LineControl::readArrayCalibrated()
+{
+  qtr.readCalibrated(_arraySensors);
+}
+
+void LineControl::readSingle()
+{
+  qtrSingle.readCalibrated(_singleSensor);
+}
+
+uint16_t LineControl::getSingle()
+{
+  readSingle();
+  return _singleSensor[0];
+}
+
+uint16_t LineControl::getArraySensorValues(int i)
+{
+  return _arraySensors[i];
 }
 
 void LineControl::computeSpeeds(int &leftSpeed, int &rightSpeed)
@@ -47,7 +70,7 @@ void LineControl::computeSpeeds(int &leftSpeed, int &rightSpeed)
     leftSpeed = DC_MOTOR_TURN_SPEED;
     rightSpeed = DC_MOTOR_BASE_SPEED;
   }
-  else if (pos > 2500)
+  else
   {
     leftSpeed = DC_MOTOR_BASE_SPEED;
     rightSpeed = DC_MOTOR_TURN_SPEED;
@@ -56,117 +79,90 @@ void LineControl::computeSpeeds(int &leftSpeed, int &rightSpeed)
 
 void LineControl::computeSpeedsPid(int &leftSpeed, int &rightSpeed)
 {
+  // Read raw position (0..3000 for 4 sensors)
   uint16_t pos = qtr.readLineBlack(_arraySensors);
-  _input = pos;
-  
 
+  // Exponential smoothing to reduce noise
+  _posFiltered = (1.0f - LINE_POS_ALPHA) * _posFiltered + LINE_POS_ALPHA * (float)pos;
+
+  double error = (_posFiltered - CENTER_POS) / 1500.0; // range approx -1 .. +1
+  _input = error;
+  _setpoint = 0;
   pid.Compute();
 
-  int correction = (int)_output; // e.g. ±200
+  int correction = (int)_output;
 
-  // no need to clamp to base, allow reverse
-  
-  
+  int l = DC_MOTOR_BASE_SPEED + correction;
+  int r = DC_MOTOR_BASE_SPEED - correction;
 
-  leftSpeed = DC_MOTOR_BASE_SPEED + correction;
-  rightSpeed = DC_MOTOR_BASE_SPEED - correction;
+  l = constrain(l, PID_MIN_SPEED, DC_MOTOR_MAX_SPEED);
+  r = constrain(r, PID_MIN_SPEED, DC_MOTOR_MAX_SPEED);
 
-  
-  leftSpeed = constrain(leftSpeed, 0, DC_MOTOR_MAX_SPEED);
-  rightSpeed = constrain(rightSpeed, 0, DC_MOTOR_MAX_SPEED);
+  leftSpeed = l;
+  rightSpeed = r;
 }
 
 bool LineControl::isLineLost()
 {
-    qtr.readCalibrated(_arraySensors);
-
-    bool anyOnLine = false;
-    for (int i = 0; i < 4; ++i) {
-        if (_arraySensors[i] > JUNCTION_THRESHOLD) { // high = black
-            anyOnLine = true;
-            break;
-        }
-    }
-    return !anyOnLine; 
-}
-
-uint16_t LineControl::getSingle()
-{
+  readArrayCalibrated();
   readSingle();
-  return _singleSensor[0];
-}
 
-bool LineControl::isOnLine(){
-  int pos = qtr.readLineBlack(_arraySensors);
-  if (pos >1000 && pos <2000){
-    return true;
-  }
-  return false;
-}
-
-void LineControl::readSingle()
-{
-  qtrSingle.readCalibrated(_singleSensor);
-}
-
-bool LineControl::isJunction()
-{
-  qtr.readCalibrated(_arraySensors);
-  bool s[4];
+  bool any = false;
   for (int i = 0; i < 4; i++)
   {
-    s[i] = _arraySensors[i] > JUNCTION_THRESHOLD;
+    if (_arraySensors[i] > JUNCTION_THRESHOLD)
+    {
+      any = true;
+      break;
+    }
   }
+  if (_singleSensor[0] > JUNCTION_THRESHOLD_SINGLE)
+    any = true;
 
+  return !any;
+}
 
-  if((s[0] || s[3]) && s[2] && s[1]){
-    Serial.println("Junction deteteced");
-  }
-
-  return ((s[0] || s[3]) && s[2] && s[1]);
+bool LineControl::isDeadend()
+{
+  // Dead-end in your use-case: line effectively gone under all sensors
+  return isLineLost();
 }
 
 JunctionType LineControl::detectJunction()
 {
   readSingle();
-  qtr.readCalibrated(_arraySensors);
+  readArrayCalibrated();
+
   bool s[4];
   for (int i = 0; i < 4; i++)
-  {
     s[i] = _arraySensors[i] > JUNCTION_THRESHOLD;
-  }
+  bool single = _singleSensor[0] > JUNCTION_THRESHOLD_SINGLE;
 
-  bool single = _singleSensor[0] > JUNCTION_THRESHOLD;
+  int count = (int)s[0] + (int)s[1] + (int)s[2] + (int)s[3];
 
-  if (s[0] && s[1] && s[2] && s[3] && single)
-  {
-    return JunctionType::CROSS;
-  }
-  if (!s[0] && s[1] && s[2] && s[3] && single)
-  {
-    return JunctionType::LEFT_T;
-  }
-  if (s[0] && s[1] && s[2] && !s[3] && single)
-  {
-    return JunctionType::RIGHT_T;
-  }
-  if (s[0] && s[1] && s[2] && s[3] && !single)
-  {
-    return JunctionType::T;
-  }
-  if (!s[0] && !s[3] && !single)
-  {
+  // If nothing sees line -> dead end / lost
+  if (count == 0 && !single)
     return JunctionType::DEAD_END;
-  }
+
+  // Strong intersection/cross (often: all or almost all see black)
+  if (count >= 4 && single)
+    return JunctionType::CROSS;
+
+  // T: array sees wide black but single does not
+  if (count >= 4 && !single)
+    return JunctionType::T;
+
+  // Left/Right T patterns (looser than before; better for angled entry)
+  if (!s[0] && s[1] && s[2] && s[3] && single)
+    return JunctionType::LEFT_T;
+  if (s[0] && s[1] && s[2] && !s[3] && single)
+    return JunctionType::RIGHT_T;
+
+  // “Generic junction” if many sensors see black
+  if (count >= 3)
+    return JunctionType::JUNCTION;
 
   return JunctionType::NONE;
-}
-
-bool LineControl::isDeadend(){
-  if(detectJunction() == JunctionType::DEAD_END){
-    return true;
-  }
-  return false;
 }
 
 String LineControl::junctionTypeToString(JunctionType type)
@@ -195,10 +191,3 @@ String LineControl::junctionTypeToString(JunctionType type)
     return "unknown";
   }
 }
-
-uint16_t LineControl::getArraySensorValues(int i)
-{
-
-  return _arraySensors[i];
-}
-
