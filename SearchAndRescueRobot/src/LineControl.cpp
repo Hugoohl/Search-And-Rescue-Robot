@@ -64,14 +64,15 @@ void LineControl::computeSpeedsPid(int &leftSpeed, int &rightSpeed)
   int correction = (int)_output; // e.g. ±200
 
   // no need to clamp to base, allow reverse
-  correction = constrain(correction, -PID_MAX_SPEED, PID_MAX_SPEED);
+  
+  
 
   leftSpeed = DC_MOTOR_BASE_SPEED + correction;
   rightSpeed = DC_MOTOR_BASE_SPEED - correction;
 
   // these allow reverse (negative values)
-  leftSpeed = constrain(leftSpeed, -DC_MOTOR_MAX_SPEED, DC_MOTOR_MAX_SPEED);
-  rightSpeed = constrain(rightSpeed, -DC_MOTOR_MAX_SPEED, DC_MOTOR_MAX_SPEED);
+  leftSpeed = constrain(leftSpeed, 0, DC_MOTOR_MAX_SPEED);
+  rightSpeed = constrain(rightSpeed, 0, DC_MOTOR_MAX_SPEED);
 }
 
 bool LineControl::isLineLost()

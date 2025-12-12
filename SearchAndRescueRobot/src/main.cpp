@@ -25,8 +25,9 @@ void setup()
   line.begin(arrayPins, singlePin);
   serv.begin(GRIP_SERVO_PIN, TILT_SERVO_PIN);
   sonar.begin(US_PIN_TRIG_RIGHT,US_PIN_TRIG_LEFT,US_PIN_TRIG_FRONT, US_PIN_ECHO_RIGHT, US_PIN_ECHO_LEFT, US_PIN_ECHO_FRONT, MAX_DISTANCE);
-  nav.begin();
   line.calibrate();
+  
+  
 
  
   
@@ -40,7 +41,7 @@ int rightSpeed = 0;
 void loop()
 {
  
-  nav.update();
+  nav.followRightWall();
   
 
 }

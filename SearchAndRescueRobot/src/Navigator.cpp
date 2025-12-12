@@ -103,7 +103,7 @@ void Navigator::handleCalibrating()
     }
 
     // --- 2) After calibration time: use PID to come back on the line for 1 second ---
-    if (elapsed < CALIBRATION_TIME + 1200)
+    if (elapsed < CALIBRATION_TIME + 2000)
     { // 1 s to re-center
         int leftSpeed = 0;
         int rightSpeed = 0;
@@ -283,7 +283,7 @@ void Navigator::testLinePidAndTurns()
     // We have a new junction
     justTurned = true;
     _motor.stop();
-    delay(100); // small stabilization delay
+    delay(10); // small stabilization delay
 
     // 2) Ask ultrasonic what kind of junction this is
     JunctionType usJ = _sonar.getJunction();
@@ -412,9 +412,9 @@ void Navigator::followRightWall()
     // --- 3. Use ultrasonic to determine junction type around us ---
     JunctionType usJunction = _sonar.getJunction();
 
-    if(_line.detectJunction() == JunctionType::NONE){
-        usJunction = JunctionType::NONE;
-    }
+    // if(_line.detectJunction() == JunctionType::NONE){
+    //     usJunction = JunctionType::NONE;
+    // }
     Serial.println(_line.junctionTypeToString(usJunction));
 
     switch (usJunction)

@@ -8,10 +8,10 @@ constexpr int DC_MOTOR_TURN_SPEED = 0;
 constexpr int DC_MOTOR_CALIB_SPEED = 50;
 
 // Line PID
-constexpr double IR_KP = 0.5;
-constexpr double IR_KI = 0;
-constexpr double IR_KD = 0;
-constexpr int PID_MAX_SPEED = 200;
+constexpr double IR_KP = 0.2;
+constexpr double IR_KI = 0.0;
+constexpr double IR_KD = 1.2;
+constexpr int PID_MAX_SPEED = 50;
 
 
 //Line values
