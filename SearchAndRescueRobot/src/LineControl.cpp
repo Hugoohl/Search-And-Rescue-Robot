@@ -45,6 +45,8 @@ void LineControl::readSingle()
   qtrSingle.readCalibrated(_singleSensor);
 }
 
+
+
 uint16_t LineControl::getSingle()
 {
   readSingle();
@@ -54,6 +56,11 @@ uint16_t LineControl::getSingle()
 uint16_t LineControl::getArraySensorValues(int i)
 {
   return _arraySensors[i];
+}
+
+uint16_t LineControl::getLine(){
+  uint16_t pos = qtr.readLineBlack(_arraySensors);
+  return pos;
 }
 
 void LineControl::computeSpeeds(int &leftSpeed, int &rightSpeed)
@@ -79,13 +86,13 @@ void LineControl::computeSpeeds(int &leftSpeed, int &rightSpeed)
 
 void LineControl::computeSpeedsPid(int &leftSpeed, int &rightSpeed)
 {
-  // Read raw position (0..3000 for 4 sensors)
   uint16_t pos = qtr.readLineBlack(_arraySensors);
 
-  // Exponential smoothing to reduce noise
   _posFiltered = (1.0f - LINE_POS_ALPHA) * _posFiltered + LINE_POS_ALPHA * (float)pos;
 
-  double error = (_posFiltered - CENTER_POS) / 1500.0; // range approx -1 .. +1
+  // raw error in "QTR position units" (~ -1500..+1500)
+  double error = (double)_posFiltered - (double)CENTER_POS;
+
   _input = error;
   _setpoint = 0;
   pid.Compute();
@@ -95,8 +102,8 @@ void LineControl::computeSpeedsPid(int &leftSpeed, int &rightSpeed)
   int l = DC_MOTOR_BASE_SPEED + correction;
   int r = DC_MOTOR_BASE_SPEED - correction;
 
-  l = constrain(l, PID_MIN_SPEED, DC_MOTOR_MAX_SPEED);
-  r = constrain(r, PID_MIN_SPEED, DC_MOTOR_MAX_SPEED);
+  l = constrain(l, 40, DC_MOTOR_MAX_SPEED);
+  r = constrain(r, 40, DC_MOTOR_MAX_SPEED);
 
   leftSpeed = l;
   rightSpeed = r;
@@ -158,8 +165,13 @@ JunctionType LineControl::detectJunction()
   if (s[0] && s[1] && s[2] && !s[3] && single)
     return JunctionType::RIGHT_T;
 
+  if ((s[0] || s[1]) && !(s[2] || s[3]) && !single)
+    return JunctionType::LEFT;
+  if ((s[2] || s[3]) && !(s[0] || s[1]) && !single)
+    return JunctionType::RIGHT;
+
   // “Generic junction” if many sensors see black
-  if (count >= 3)
+  if (count >= 3 || single)
     return JunctionType::JUNCTION;
 
   return JunctionType::NONE;

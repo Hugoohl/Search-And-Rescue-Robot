@@ -4,7 +4,8 @@
 #include "Types.h"
 #include "Config.h"
 
-class UltraSonic {
+class UltraSonic
+{
 public:
     UltraSonic();
 
@@ -16,10 +17,12 @@ public:
     void update();
 
     // cached distances
-    
+
     unsigned int readDistRight() const { return _dR; }
-    unsigned int readDistLeft()  const { return _dL; }
+    unsigned int readDistLeft() const { return _dL; }
     unsigned int readDistFront() const { return _dF; }
+    JunctionType getJunctionStable() const;
+    mutable unsigned long _lastNonNoneMs = 0;
 
     JunctionType getJunction() const;
     bool cylinderDetected() const;
@@ -36,8 +39,16 @@ private:
     uint8_t _rrIndex = 0;
     unsigned long _lastPingMs = 0;
 
-    unsigned int sanitize(unsigned int d) const {
-        if (d == 0 || d > MAX_DISTANCE) return MAX_DISTANCE;
+    unsigned int sanitize(unsigned int d) const
+    {
+        if (d == 0 || d > MAX_DISTANCE)
+            return MAX_DISTANCE;
         return d;
     }
+
+    mutable JunctionType _stableJ = JunctionType::NONE;
+    mutable JunctionType _lastJ = JunctionType::NONE;
+    mutable uint8_t _sameCount = 0;
+
+    
 };

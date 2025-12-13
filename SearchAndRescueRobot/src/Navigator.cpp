@@ -27,11 +27,29 @@ void Navigator::update()
 
     switch (_state)
     {
-    case RobotState::WAIT_FOR_START: handleWaitForStart(); break;
-    case RobotState::CALIBRATING:    handleCalibrating();  break;
-    case RobotState::RUN_MISSION:    handleRunMission();   break;
-    case RobotState::MISSION_DONE:   handleMissionDone();  break;
+    case RobotState::WAIT_FOR_START:
+        handleWaitForStart();
+        break;
+    case RobotState::CALIBRATING:
+        handleCalibrating();
+        break;
+    case RobotState::RUN_MISSION:
+        handleRunMission();
+        break;
+    case RobotState::MISSION_DONE:
+        handleMissionDone();
+        break;
     }
+}
+
+bool Navigator::junctionLocked() const
+{
+    return millis() < _junctionLockUntil;
+}
+
+void Navigator::lockJunction(unsigned long ms)
+{
+    _junctionLockUntil = millis() + ms;
 }
 
 void Navigator::handleWaitForStart()
@@ -72,10 +90,14 @@ void Navigator::handleCalibrating()
             lastToggleTime = now;
         }
 
-        if (turnLeft) _motor.drive(-sweepSpeed, sweepSpeed);
-        else         _motor.drive( sweepSpeed,-sweepSpeed);
+        if (turnLeft)
+            _motor.drive(-sweepSpeed, sweepSpeed);
+        else
+            _motor.drive(sweepSpeed, -sweepSpeed);
         return;
     }
+
+    
 
     _motor.stop();
     calibStartTime = 0;
@@ -100,69 +122,58 @@ void Navigator::rotate180()
 {
     Serial.println("rotate180");
     const uint16_t TH = JUNCTION_THRESHOLD_SINGLE;
-    unsigned long start = millis();
 
-    // 1) leave current black patch
-    unsigned long leaveStart = millis();
-    while (_line.getSingle() > TH)
-    {
-        if (millis() - leaveStart > ROTATE_EXIT_BLACK_TIMEOUT_MS) break;
+    // Leave current black patch
+    unsigned long t0 = millis();
+    while (_line.getSingle() > TH) {
+        if (millis() - t0 > ROTATE_EXIT_BLACK_TIMEOUT_MS) break;
         _motor.drive(DC_MOTOR_BASE_SPEED, -DC_MOTOR_BASE_SPEED);
+        delay(2);
     }
 
-    // 2) find line again (timeout)
-    while (_line.getSingle() < TH)
-    {
-        if (millis() - start > ROTATE_TIMEOUT_MS) break;
+    // Find line again with stability
+    t0 = millis();
+    int onCount = 0;
+    while (millis() - t0 < ROTATE_TIMEOUT_MS * 2) {  // give 180 more time
         _motor.drive(DC_MOTOR_BASE_SPEED, -DC_MOTOR_BASE_SPEED);
+
+        if (_line.getSingle() > TH) onCount++;
+        else onCount = 0;
+
+        if (onCount >= 6) break;
+        delay(2);
     }
 
+    _motor.stop();
+
+    // Leave junction area
+    _motor.drive(DC_MOTOR_BASE_SPEED, DC_MOTOR_BASE_SPEED);
+    delay(220);
     _motor.stop();
 }
 
 void Navigator::rotate90left()
 {
-    Serial.println("rotate90left");
-    const uint16_t TH = JUNCTION_THRESHOLD_SINGLE;
-    unsigned long start = millis();
-
-    unsigned long leaveStart = millis();
-    while (_line.getSingle() > TH)
-    {
-        if (millis() - leaveStart > ROTATE_EXIT_BLACK_TIMEOUT_MS) break;
-        _motor.drive(-DC_MOTOR_BASE_SPEED, DC_MOTOR_BASE_SPEED);
+    while(_line.getSingle() <JUNCTION_THRESHOLD_SINGLE){
+        _motor.drive(DC_MOTOR_TURN_SPEED, DC_MOTOR_BASE_SPEED+30);
     }
-
-    while (_line.getSingle() < TH)
-    {
-        if (millis() - start > ROTATE_TIMEOUT_MS) break;
-        _motor.drive(-DC_MOTOR_BASE_SPEED, DC_MOTOR_BASE_SPEED);
-    }
-
     _motor.stop();
 }
+
+    
+
+
 
 void Navigator::rotate90right()
 {
-    Serial.println("rotate90right");
-    const uint16_t TH = JUNCTION_THRESHOLD_SINGLE;
-    unsigned long start = millis();
-
-    unsigned long leaveStart = millis();
-    while (_line.getSingle() > TH)
-    {
-        if (millis() - leaveStart > ROTATE_EXIT_BLACK_TIMEOUT_MS) break;
-        _motor.drive(DC_MOTOR_BASE_SPEED, -DC_MOTOR_BASE_SPEED);
+    while(_line.getSingle() <JUNCTION_THRESHOLD_SINGLE){
+        _motor.drive(DC_MOTOR_BASE_SPEED+30, DC_MOTOR_TURN_SPEED);
     }
-
-    while (_line.getSingle() < TH)
-    {
-        if (millis() - start > ROTATE_TIMEOUT_MS) break;
-        _motor.drive(DC_MOTOR_BASE_SPEED, -DC_MOTOR_BASE_SPEED);
-    }
-
     _motor.stop();
 }
+
+    
+
 
 // ---------------- Core mission loop ----------------
 
@@ -227,6 +238,12 @@ void Navigator::followRightWall()
 
     int leftSpeed = 0, rightSpeed = 0;
     _line.computeSpeedsPid(leftSpeed, rightSpeed);
+    // Don't even consider junctions while locked
+    if (junctionLocked())
+    {
+        _motor.drive(leftSpeed, rightSpeed);
+        return;
+    }
 
     JunctionType irType;
     bool atJunction = debouncedJunction(_line, irType);
@@ -241,21 +258,37 @@ void Navigator::followRightWall()
     _motor.stop();
     delay(10);
 
-    JunctionType us = _sonar.getJunction();
-    Serial.print("IR: "); Serial.print(_line.junctionTypeToString(irType));
-    Serial.print(" | US: "); Serial.println(_line.junctionTypeToString(us));
+    JunctionType us = _sonar.getJunctionStable();
+    Serial.print("IR: ");
+    Serial.print(_line.junctionTypeToString(irType));
+    Serial.print(" | US: ");
+    Serial.println(_line.junctionTypeToString(us));
 
     // Right-hand rule preference
     switch (us)
     {
-    case JunctionType::DEAD_END: rotate180(); break;
+    case JunctionType::DEAD_END:
+        
+        rotate180();    
+        lockJunction(800);
+        break;
     case JunctionType::RIGHT:
-    case JunctionType::RIGHT_T: rotate90right(); break;
+    case JunctionType::RIGHT_T:
+        rotate90right();
+        lockJunction(600);
+        break;
     case JunctionType::T:
-    case JunctionType::CROSS:   rotate90right(); break;
+    case JunctionType::CROSS:
+        rotate90right();
+        lockJunction(600);
+        break;
     case JunctionType::LEFT:
-    case JunctionType::LEFT_T:  rotate90left(); break; // only if needed
-    default: break; // go straight
+    case JunctionType::LEFT_T:
+        rotate90left();
+        lockJunction(600);
+        break; // only if needed
+    default:
+        break; // go straight
     }
 }
 
@@ -272,6 +305,12 @@ void Navigator::followLeftWall()
 
     int leftSpeed = 0, rightSpeed = 0;
     _line.computeSpeedsPid(leftSpeed, rightSpeed);
+    // Don't even consider junctions while locked
+    if (junctionLocked())
+    {
+        _motor.drive(leftSpeed, rightSpeed);
+        return;
+    }
 
     JunctionType irType;
     bool atJunction = debouncedJunction(_line, irType);
@@ -285,21 +324,40 @@ void Navigator::followLeftWall()
     _motor.stop();
     delay(10);
 
-    JunctionType us = _sonar.getJunction();
-    Serial.print("IR: "); Serial.print(_line.junctionTypeToString(irType));
-    Serial.print(" | US: "); Serial.println(_line.junctionTypeToString(us));
+    JunctionType us = _sonar.getJunctionStable();
+    Serial.print("IR: ");
+    Serial.print(_line.junctionTypeToString(irType));
+    Serial.print(" | US: ");
+    Serial.println(_line.junctionTypeToString(us));
 
     // Left-hand rule preference
     switch (us)
     {
-    case JunctionType::DEAD_END: rotate180(); break;
+    case JunctionType::DEAD_END:
+        rotate180();
+        lockJunction(800);
+
+        break;
     case JunctionType::LEFT:
-    case JunctionType::LEFT_T:  rotate90left(); break;
+    case JunctionType::LEFT_T:
+        rotate90left();
+        lockJunction(600);
+
+        break;
     case JunctionType::T:
-    case JunctionType::CROSS:   rotate90left(); break;
+    case JunctionType::CROSS:
+        rotate90left();
+        lockJunction(600);
+
+        break;
     case JunctionType::RIGHT:
-    case JunctionType::RIGHT_T: rotate90right(); break;
-    default: break;
+    case JunctionType::RIGHT_T:
+        rotate90right();
+        lockJunction(600);
+
+        break;
+    default:
+        break;
     }
 }
 
@@ -316,17 +374,38 @@ void Navigator::handleRunMission()
 
     switch (_phase)
     {
-    case MissionState::SEARCH_RIGHT_1:    handleSearchRight1(); break;
-    case MissionState::RETURN_LEFT_1:     handleReturnLeft1(); break;
-    case MissionState::SEARCH_RIGHT_2:    handleSearchRight2(); break;
-    case MissionState::RETURN_LEFT_2:     handleReturnLeft2(); break;
-    case MissionState::SEARCH_LEFT_FINAL: handleSearchLeftFinal(); break;
-    case MissionState::ISLAND_SEARCH:     handleIslandSearch(); break;
-    case MissionState::RETURN_LEFT_FINAL: handleReturnLeftFinal(); break;
-    case MissionState::PICKUP:            handlePickup(); break;
-    case MissionState::RELEASE:           handleRelease(); break;
-    case MissionState::DONE:              handleMissionDone(); break;
-    default: break;
+    case MissionState::SEARCH_RIGHT_1:
+        handleSearchRight1();
+        break;
+    case MissionState::RETURN_LEFT_1:
+        handleReturnLeft1();
+        break;
+    case MissionState::SEARCH_RIGHT_2:
+        handleSearchRight2();
+        break;
+    case MissionState::RETURN_LEFT_2:
+        handleReturnLeft2();
+        break;
+    case MissionState::SEARCH_LEFT_FINAL:
+        handleSearchLeftFinal();
+        break;
+    case MissionState::ISLAND_SEARCH:
+        handleIslandSearch();
+        break;
+    case MissionState::RETURN_LEFT_FINAL:
+        handleReturnLeftFinal();
+        break;
+    case MissionState::PICKUP:
+        handlePickup();
+        break;
+    case MissionState::RELEASE:
+        handleRelease();
+        break;
+    case MissionState::DONE:
+        handleMissionDone();
+        break;
+    default:
+        break;
     }
 }
 
@@ -416,9 +495,12 @@ void Navigator::handlePickup()
 
     rotate180();
 
-    if (_phaseBeforePickup == MissionState::SEARCH_RIGHT_1)      _phase = MissionState::RETURN_LEFT_1;
-    else if (_phaseBeforePickup == MissionState::SEARCH_RIGHT_2) _phase = MissionState::RETURN_LEFT_2;
-    else                                                        _phase = MissionState::RETURN_LEFT_FINAL;
+    if (_phaseBeforePickup == MissionState::SEARCH_RIGHT_1)
+        _phase = MissionState::RETURN_LEFT_1;
+    else if (_phaseBeforePickup == MissionState::SEARCH_RIGHT_2)
+        _phase = MissionState::RETURN_LEFT_2;
+    else
+        _phase = MissionState::RETURN_LEFT_FINAL;
 }
 
 void Navigator::handleRelease()
@@ -434,7 +516,10 @@ void Navigator::handleRelease()
 
     rotate180();
 
-    if (_lastReturnPhase == 1)      _phase = MissionState::SEARCH_RIGHT_2;
-    else if (_lastReturnPhase == 2) _phase = MissionState::SEARCH_LEFT_FINAL;
-    else                            _phase = MissionState::DONE;
+    if (_lastReturnPhase == 1)
+        _phase = MissionState::SEARCH_RIGHT_2;
+    else if (_lastReturnPhase == 2)
+        _phase = MissionState::SEARCH_LEFT_FINAL;
+    else
+        _phase = MissionState::DONE;
 }

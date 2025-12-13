@@ -21,6 +21,7 @@ public:
 
     // sensors
     void readSingle();
+    uint16_t getLine();
     uint16_t getSingle();
     uint16_t getArraySensorValues(int i);
 

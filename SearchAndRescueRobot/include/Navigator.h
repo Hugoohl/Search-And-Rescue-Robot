@@ -8,7 +8,7 @@
 #include "UltraSonic.h"
 #include "Gripper.h"
 
-class Navigator 
+class Navigator
 {
 public:
     Navigator(LineControl &line, MotorDriver &motor, UltraSonic &sonar, Gripper &serv);
@@ -21,12 +21,13 @@ public:
     void rotate90right();
 
     void testLinePidAndTurns();
-    bool detectCylinder(); 
+    bool detectCylinder();
 
     void followRightWall();
     void followLeftWall();
 
-private:
+
+
     // ------------------------
     // Robot global state
     // ------------------------
@@ -44,10 +45,10 @@ private:
     int _lastReturnPhase = 0;
 
     // Dependencies
-    LineControl   &_line;
-    MotorDriver   &_motor;
-    UltraSonic    &_sonar;
-    Gripper       &_serv;
+    LineControl &_line;
+    MotorDriver &_motor;
+    UltraSonic &_sonar;
+    Gripper &_serv;
 
     // Time tracking if needed
     unsigned long _missionStartTime = 0;
@@ -80,13 +81,12 @@ private:
     // Utility helpers
     // ------------------------
     bool startButtonPressed();
-        
-    bool atStartSquare();       // TODO: implement your own logic
-    bool inIslandRegion();      // TODO: implement your island location check
+
+    bool atStartSquare();  // TODO: implement your own logic
+    bool inIslandRegion(); // TODO: implement your island location check
     bool lineLost();
 
-
-
-
+    unsigned long _junctionLockUntil = 0;
+    bool junctionLocked() const;
+    void lockJunction(unsigned long ms);
 };
-
