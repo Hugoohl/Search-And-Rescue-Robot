@@ -2,7 +2,7 @@
 
 // ---------------- Motors ----------------
 constexpr int DC_MOTOR_MAX_SPEED = 255;
-constexpr int DC_MOTOR_BASE_SPEED = 90;      // moderate base speed
+constexpr int DC_MOTOR_BASE_SPEED = 70;      // moderate base speed
 constexpr int DC_MOTOR_TURN_SPEED = 0;       // used only in special cases
 constexpr int DC_MOTOR_CALIB_SPEED = 60;
 

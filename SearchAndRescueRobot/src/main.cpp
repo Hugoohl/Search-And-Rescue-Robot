@@ -47,11 +47,6 @@ void setup()
 int leftSpeed = 0;
 int rightSpeed = 0;
 
-void lockJunction(unsigned long ms)
-{
-  junctionLockUntil = millis() + ms;
-}
-
 bool junctionEvent()
 {
   if (millis() < junctionLockUntil)
@@ -68,7 +63,7 @@ bool junctionEvent()
                      j == JunctionType::RIGHT ||
                      j == JunctionType::LEFT);
 
-  if (isJunction)
+  if (isJunction  && sonar.getJunctionStable() != JunctionType::NONE)
   {
     junctionLockUntil = millis() + JUNCTION_LOCK_MS;
     return true;
@@ -188,14 +183,16 @@ void loop()
     TURN_AROUND();
 
     returning = true;
-    junctionCount = 11-junctionCount; // reset counter for return route
+    junctionCount = 10-junctionCount; // reset counter for return route
     junctionLockUntil = millis() + 900;
   }
 
   // Follow line by PID unless we decide otherwise
   int l = 0, r = 0;
   
-
+  line.computeSpeedsPid(l, r);
+  if(returning){l = l -30; r = r-30;}
+  motor.drive(l, r);
 
   // Detect passing a junction (just an event)
   if (junctionEvent())
@@ -203,8 +200,8 @@ void loop()
     junctionCount++;
     Serial.println(junctionCount);
 
-     
-    
+    motor.stop();
+    delay(80);
 
     // ---------------- OUTGOING PATH ----------------
     if (!returning)
@@ -212,52 +209,42 @@ void loop()
       // HARD CODE: what to do at each junction count
       if (junctionCount == 1)
       {
-        TURN_RIGHT(); 
-        lockJunction(JUNCTION_BREAK);
+        TURN_RIGHT(); // <-- change later
       }
       else if (junctionCount == 2)
       {
-        TURN_RIGHT(); 
-        lockJunction(JUNCTION_BREAK);
+        TURN_RIGHT(); // <-- change later
       }
       else if (junctionCount == 3)
       {
-        TURN_LEFT(); 
-        lockJunction(JUNCTION_BREAK);
+        TURN_LEFT(); // ...
       }
       else if (junctionCount == 4)
       {
         TURN_RIGHT();
-        lockJunction(JUNCTION_BREAK);
       }
       else if (junctionCount == 5)
       {
-        lockJunction(JUNCTION_BREAK);
       }
       else if (junctionCount == 6)
       {
         TURN_RIGHT(); // <-- change later
-        lockJunction(JUNCTION_BREAK);
       }
       else if (junctionCount == 7)
       {
-        TURN_RIGHT(); 
-        lockJunction(JUNCTION_BREAK);
+        TURN_RIGHT(); //
       }
       else if (junctionCount == 8)
       {
         TURN_LEFT();
-        lockJunction(JUNCTION_BREAK);
       }
       else if (junctionCount == 9)
       {
-        TURN_LEFT(); 
-        lockJunction(JUNCTION_BREAK);
+        TURN_LEFT(); // ...
       }
       else if (junctionCount == 10)
       {
         TURN_LEFT();
-        lockJunction(JUNCTION_BREAK);
       }
     }
 
@@ -269,51 +256,42 @@ void loop()
       if (junctionCount == 1)
       {
         TURN_RIGHT();
-        lockJunction(JUNCTION_BREAK);
       }
       else if (junctionCount == 2)
       {
-        TURN_RIGHT(); 
-        lockJunction(JUNCTION_BREAK);
+        TURN_RIGHT(); // <-- change later
       }
       else if (junctionCount == 3)
       {
-        TURN_RIGHT();
-        lockJunction(JUNCTION_BREAK);
+        TURN_RIGHT(); // ...
       }
       else if (junctionCount == 4)
       {
         TURN_LEFT();
-        lockJunction(JUNCTION_BREAK);
       }
       else if (junctionCount == 5)
       {
         TURN_LEFT();
-        lockJunction(JUNCTION_BREAK);
       }
       else if (junctionCount == 6)
       {
-       lockJunction(JUNCTION_BREAK);
+       
       }
       else if (junctionCount == 7)
       {
-        TURN_LEFT(); 
-        lockJunction(JUNCTION_BREAK);
+        TURN_LEFT(); // ...
       }
       else if (junctionCount == 8)
       {
         TURN_RIGHT();
-        lockJunction(JUNCTION_BREAK);
       }
       else if (junctionCount == 9)
       {
-        TURN_LEFT(); 
-        lockJunction(JUNCTION_BREAK);
+        TURN_LEFT(); // ...
       }
       else if (junctionCount == 10)
       {
         TURN_LEFT();
-        lockJunction(JUNCTION_BREAK);
       }
 
       // Stop at "start" after a known number of junctions on return
@@ -326,10 +304,7 @@ void loop()
     }
 
     // After any turn, push forward a bit so we don't re-trigger the same junction
-
-  } else{
-  line.computeSpeedsPid(l, r);
-  if(returning){l = l -30; r = r-30;}
-  motor.drive(l, r);
+    motor.drive(DC_MOTOR_BASE_SPEED, DC_MOTOR_BASE_SPEED);
+    delay(180);
   }
 }
